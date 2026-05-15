@@ -409,6 +409,7 @@ body{
   background:var(--surface);border:1px solid var(--border);
   border-radius:var(--radius-sm);padding:9px 12px;
   cursor:pointer;transition:.12s;
+  flex-shrink:0;min-width:0;
 }
 .mtg-card:hover{border-color:var(--border2);background:var(--surface2)}
 .mtg-card.active{border-color:var(--navy);background:var(--navy-bg)}
@@ -1124,7 +1125,7 @@ body:has(.ritual-overlay:not(.hidden)) .fab { display:none!important }
 <div class="overlay hidden" id="dec-modal" onclick="if(event.target===this)closeDecModal()">
 <div class="modal">
   <div class="modal-header">
-    <span class="modal-title">Log Decision</span>
+    <span class="modal-title" id="dec-modal-title">Log Decision</span>
     <button class="btn-icon" onclick="closeDecModal()"><i class="ti ti-x"></i></button>
   </div>
   <div class="modal-body">
@@ -1147,10 +1148,11 @@ body:has(.ritual-overlay:not(.hidden)) .fab { display:none!important }
       <input class="fi" id="dec-ctx" placeholder="Which meeting or context...">
     </div>
     <input type="hidden" id="dec-meeting-id" value="">
+    <input type="hidden" id="dec-edit-id" value="">
   </div>
   <div class="modal-footer">
     <button class="btn" onclick="closeDecModal()">Cancel</button>
-    <button class="btn btn-primary" onclick="saveDecision()"><i class="ti ti-check"></i> Log</button>
+    <button class="btn btn-primary" onclick="saveDecision()" id="dec-save-btn"><i class="ti ti-check"></i> Log</button>
   </div>
 </div>
 </div>
@@ -1259,6 +1261,20 @@ body:has(.ritual-overlay:not(.hidden)) .fab { display:none!important }
   <div class="modal-footer">
     <button class="btn" onclick="closeSettings()">Cancel</button>
     <button class="btn btn-primary" onclick="saveSettings()"><i class="ti ti-check"></i> Save</button>
+  </div>
+</div>
+</div>
+
+<!-- ══ CONFIRM MODAL ══ -->
+<div class="overlay hidden" id="confirm-modal" onclick="if(event.target===this)closeConfirm()">
+<div class="modal" style="max-width:380px">
+  <div class="modal-body" style="text-align:center;padding:28px 24px 16px">
+    <i class="ti ti-alert-triangle" style="font-size:36px;color:var(--amber2)"></i>
+    <div style="font-size:15px;font-weight:500;color:var(--text);margin-top:14px" id="confirm-msg">Are you sure?</div>
+  </div>
+  <div class="modal-footer" style="justify-content:center;gap:10px;padding-top:8px">
+    <button class="btn" onclick="closeConfirm()">Cancel</button>
+    <button class="btn btn-danger" id="confirm-ok-btn">Delete</button>
   </div>
 </div>
 </div>
@@ -1513,7 +1529,7 @@ function renderDashboard() {
       <div class="kpi-num">${waitingOn.length}</div>
       <div class="kpi-label">Waiting on</div>
     </div>
-    <div class="kpi-card navy" onclick="taskNav('week')">
+    <div class="kpi-card navy" onclick="taskNav('next5')">
       <div class="kpi-num">${thisWeek.length}</div>
       <div class="kpi-label">Due this week</div>
     </div>
@@ -1981,13 +1997,23 @@ function undoComplete(sid, btn) {
   toast('Task reopened','success');
 }
 
+let _confirmCb = null;
+function showConfirm(msg, cb) {
+  _confirmCb = cb;
+  document.getElementById('confirm-msg').textContent = msg;
+  document.getElementById('confirm-ok-btn').onclick = ()=>{ closeConfirm(); if(_confirmCb) _confirmCb(); };
+  document.getElementById('confirm-modal').classList.remove('hidden');
+}
+function closeConfirm() {
+  document.getElementById('confirm-modal').classList.add('hidden');
+  _confirmCb = null;
+}
+
 function deleteTask(id) {
-  if(!confirm('Delete this task?')) return;
-  S.tasks = S.tasks.filter(t=>String(t.id)!==String(id));
-  save();
-  renderTaskPage();
-  renderDashboard();
-  updateBadges();
+  showConfirm('Delete this task?', ()=>{
+    S.tasks = S.tasks.filter(t=>String(t.id)!==String(id));
+    save(); renderTaskPage(); renderDashboard(); updateBadges();
+  });
 }
 
 function openQuickCapture() {
@@ -2119,7 +2145,10 @@ function openMeeting(id) {
       <textarea class="ta" placeholder="Meeting purpose..." onblur="updMtg(${id},'objective',this.value)">${esc(m.objective||'')}</textarea>
     </div>
     <div>
-      <div class="fl" style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.7px;color:var(--text3);margin-bottom:5px"><i class="ti ti-notes"></i> Notes log</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.7px;color:var(--text3)"><i class="ti ti-notes"></i> Notes log</div>
+        <button class="btn btn-primary btn-sm" onclick="focusMtgNote(${id})"><i class="ti ti-plus"></i> Add note</button>
+      </div>
       <div id="mtg-notes-log-${id}">${renderMtgNotes(id)}</div>
     </div>
     <div>
@@ -2130,7 +2159,10 @@ function openMeeting(id) {
       <div id="mtg-acts-${id}">${renderMtgActions(id)}</div>
     </div>
     <div>
-      <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.7px;color:var(--text3);margin-bottom:8px"><i class="ti ti-list"></i> Agenda for next session</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.7px;color:var(--text3)"><i class="ti ti-list"></i> Agenda for next session</div>
+        <button class="btn btn-sm" onclick="addAgenda(${id})"><i class="ti ti-plus"></i> Add item</button>
+      </div>
       <div id="mtg-agenda-${id}">${renderAgenda(id)}</div>
     </div>`;
 
@@ -2212,9 +2244,8 @@ function renderAgenda(mid) {
     </tr>`).join('')}
     </tbody></table>`;
   } else {
-    html += `<div style="font-size:12px;color:var(--text3);padding:6px;border:1px dashed var(--border2);border-radius:var(--radius-sm);text-align:center;margin-bottom:6px">No agenda items</div>`;
+    html += `<div style="font-size:12px;color:var(--text3);padding:6px;border:1px dashed var(--border2);border-radius:var(--radius-sm);text-align:center">No agenda items</div>`;
   }
-  html += `<button class="btn btn-sm" style="margin-top:6px" onclick="addAgenda(${mid})"><i class="ti ti-plus"></i> Add item</button>`;
   return html;
 }
 
@@ -2229,10 +2260,15 @@ function renderMtgNotes(mid) {
     </div>`).join('');
   }
   html += `<div style="display:flex;gap:6px;margin-top:6px;align-items:flex-start">
-    <textarea id="mtg-note-input-${mid}" class="ta" placeholder="Add a note..." rows="2" style="flex:1;font-size:12px"></textarea>
-    <button class="btn btn-sm btn-primary" style="margin-top:2px;flex-shrink:0" onclick="addMtgNote(${mid})"><i class="ti ti-plus"></i> Note</button>
+    <textarea id="mtg-note-input-${mid}" class="ta" placeholder="Write a note and press Save note..." rows="2" style="flex:1;font-size:12px"></textarea>
+    <button class="btn btn-sm btn-primary" style="margin-top:2px;flex-shrink:0" onclick="addMtgNote(${mid})"><i class="ti ti-check"></i> Save note</button>
   </div>`;
   return html;
+}
+
+function focusMtgNote(mid) {
+  const ta = document.getElementById('mtg-note-input-'+mid);
+  if(ta) { ta.focus(); ta.scrollIntoView({behavior:'smooth',block:'nearest'}); }
 }
 
 function updMtg(id,f,v) {
@@ -2340,13 +2376,14 @@ function cloneMeeting(id) {
 }
 
 function deleteMeeting(id) {
-  if(!confirm('Delete meeting and all its actions?')) return;
-  S.meetings=S.meetings.filter(m=>m.id!==id);
-  S.actions=S.actions.filter(a=>a.meetingId!==id);
-  S.decisions=S.decisions.filter(d=>d.meetingId!==id);
-  _activeMeeting=null; save();
-  renderMeetingSidebar();
-  document.getElementById('mtg-main').innerHTML='<div class="empty"><i class="ti ti-calendar-off"></i><p>Select or create a meeting</p></div>';
+  showConfirm('Delete meeting and all its actions?', ()=>{
+    S.meetings=S.meetings.filter(m=>m.id!==id);
+    S.actions=S.actions.filter(a=>a.meetingId!==id);
+    S.decisions=S.decisions.filter(d=>d.meetingId!==id);
+    _activeMeeting=null; save();
+    renderMeetingSidebar();
+    document.getElementById('mtg-main').innerHTML='<div class="empty"><i class="ti ti-calendar-off"></i><p>Select or create a meeting</p></div>';
+  });
 }
 
 // ══════════════════════════════
@@ -2426,19 +2463,29 @@ function renderDecisions(q) {
   const list = document.getElementById('dec-list');
   if(!list) return;
   if(decs.length===0) { list.innerHTML=`<div class="empty"><i class="ti ti-gavel"></i><p>No decisions logged yet</p></div>`; return; }
-  list.innerHTML = decs.map(d=>`<div class="dec-card">
-    <div class="dec-text">${esc(d.text)}</div>
-    <div class="dec-meta">
-      <span>${fmtFull(d.date)}</span>
-      ${d.madeBy?`<span style="color:var(--navy);font-weight:500">by ${esc(d.madeBy)}</span>`:''}
-      ${d.context?`<span class="badge badge-muted">${esc(d.context)}</span>`:''}
-      <button class="btn-icon" style="padding:2px;font-size:11px;margin-left:auto" onclick="deleteDec(${d.id})"><i class="ti ti-trash"></i></button>
-    </div>
-  </div>`).join('');
+  list.innerHTML = decs.map(d=>{
+    const mtg = d.meetingId ? S.meetings.find(m=>m.id===d.meetingId) : null;
+    return `<div class="dec-card">
+      <div class="dec-text">${esc(d.text)}</div>
+      <div class="dec-meta">
+        <span>${fmtFull(d.date)}</span>
+        ${d.madeBy?`<span style="color:var(--navy);font-weight:500">by ${esc(d.madeBy)}</span>`:''}
+        ${d.context?`<span class="badge badge-muted">${esc(d.context)}</span>`:''}
+        ${mtg?`<span class="badge badge-teal" style="cursor:pointer" onclick="nav('meetings');openMeeting(${mtg.id})"><i class="ti ti-calendar" style="font-size:9px"></i> ${esc(mtg.title)}</span>`:''}
+        <div style="margin-left:auto;display:flex;gap:4px">
+          <button class="btn-icon" style="padding:2px;font-size:11px" onclick="openEditDec(${d.id})" title="Edit"><i class="ti ti-edit"></i></button>
+          <button class="btn-icon" style="padding:2px;font-size:11px" onclick="deleteDec(${d.id})" title="Delete"><i class="ti ti-trash"></i></button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
 }
 function searchDecisions(v) { renderDecisions(v); }
 
 function openDecModal(meetingId) {
+  document.getElementById('dec-modal-title').textContent = 'Log Decision';
+  document.getElementById('dec-save-btn').innerHTML = '<i class="ti ti-check"></i> Log';
+  document.getElementById('dec-edit-id').value = '';
   document.getElementById('dec-text').value='';
   document.getElementById('dec-by').value=S.settings.name||'Rayan';
   document.getElementById('dec-date').value=toDay();
@@ -2447,24 +2494,48 @@ function openDecModal(meetingId) {
   document.getElementById('dec-modal').classList.remove('hidden'); document.body.classList.add('modal-open');
   document.getElementById('dec-text').focus();
 }
+function openEditDec(id) {
+  const d = S.decisions.find(x=>x.id===id); if(!d) return;
+  document.getElementById('dec-modal-title').textContent = 'Edit Decision';
+  document.getElementById('dec-save-btn').innerHTML = '<i class="ti ti-check"></i> Save';
+  document.getElementById('dec-edit-id').value = String(id);
+  document.getElementById('dec-text').value = d.text||'';
+  document.getElementById('dec-by').value = d.madeBy||'';
+  document.getElementById('dec-date').value = d.date||toDay();
+  document.getElementById('dec-ctx').value = d.context||'';
+  document.getElementById('dec-meeting-id').value = d.meetingId||'';
+  document.getElementById('dec-modal').classList.remove('hidden'); document.body.classList.add('modal-open');
+  document.getElementById('dec-text').focus();
+}
 function closeDecModal() { document.getElementById('dec-modal').classList.add('hidden'); if(!document.querySelector('.overlay:not(.hidden),.ritual-overlay:not(.hidden)')) document.body.classList.remove('modal-open'); }
 
 function saveDecision() {
   const text=document.getElementById('dec-text').value.trim(); if(!text){toast('Enter a decision','warning');return;}
-  const d={
-    id:getId(), text, madeBy:document.getElementById('dec-by').value.trim(),
+  const editId = document.getElementById('dec-edit-id').value;
+  const fields = {
+    text, madeBy:document.getElementById('dec-by').value.trim(),
     date:document.getElementById('dec-date').value,
     context:document.getElementById('dec-ctx').value.trim()||null,
     meetingId:parseInt(document.getElementById('dec-meeting-id').value)||null
   };
-  S.decisions.unshift(d); save(); closeDecModal();
-  renderDecisions();
-  if(d.meetingId&&_activeMeeting===d.meetingId) openMeeting(d.meetingId);
-  toast('Decision logged','success');
+  if(editId) {
+    const idx = S.decisions.findIndex(x=>x.id===parseInt(editId));
+    if(idx>=0) S.decisions[idx] = {...S.decisions[idx], ...fields};
+    save(); closeDecModal(); renderDecisions();
+    if(fields.meetingId&&_activeMeeting===fields.meetingId) openMeeting(fields.meetingId);
+    toast('Decision updated','success');
+  } else {
+    const d = {id:getId(), ...fields};
+    S.decisions.unshift(d); save(); closeDecModal();
+    renderDecisions();
+    if(d.meetingId&&_activeMeeting===d.meetingId) openMeeting(d.meetingId);
+    toast('Decision logged','success');
+  }
 }
 function deleteDec(id) {
-  if(!confirm('Delete this decision?')) return;
-  S.decisions=S.decisions.filter(d=>d.id!==id); save(); renderDecisions();
+  showConfirm('Delete this decision?', ()=>{
+    S.decisions=S.decisions.filter(d=>d.id!==id); save(); renderDecisions();
+  });
 }
 
 // ══════════════════════════════
@@ -2692,7 +2763,15 @@ function importData(event) {
     try {
       const data = JSON.parse(e.target.result);
       if(!data.tasks && !data.meetings) { toast('Invalid backup file','error'); return; }
-      if(!confirm(`Import backup from ${data._exported||'unknown date'}?\n\nThis will replace your current data.`)) return;
+      // showConfirm triggers async — handle inline with a flag
+      if(!window._importConfirmed) {
+        showConfirm(`Import backup from ${data._exported||'unknown date'}? This will replace all current data.`, ()=>{
+          window._importConfirmed = true;
+          importData(event);
+        });
+        return;
+      }
+      window._importConfirmed = false;
       S = data;
       if(!S.settings) S.settings = {...DEFAULT_SETTINGS};
       save();
