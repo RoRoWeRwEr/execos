@@ -693,7 +693,34 @@ body:has(.ritual-overlay:not(.hidden)) .fab { display:none!important }
   .toast-wrap{bottom:72px}
   .pages{padding-bottom:58px}
   .tasks-sidebar{display:none}
-  .tasks-main{padding:12px}
+  .tasks-main{padding:0}
+}
+/* ── MOBILE SECTION NAV ── */
+.mobile-section-nav{display:none}
+@media(max-width:768px){
+  .mobile-section-nav{
+    display:flex;overflow-x:auto;gap:6px;
+    padding:10px 12px;border-bottom:1px solid var(--border);
+    background:var(--bg2);-webkit-overflow-scrolling:touch;
+    scrollbar-width:none;flex-shrink:0;
+  }
+  .mobile-section-nav::-webkit-scrollbar{display:none}
+  .msn-chip{
+    display:inline-flex;align-items:center;gap:4px;
+    padding:6px 13px;border-radius:99px;
+    border:1px solid var(--border2);background:var(--surface);
+    color:var(--text2);font-size:12px;font-weight:500;
+    white-space:nowrap;cursor:pointer;font-family:var(--font);
+    flex-shrink:0;transition:.12s;
+  }
+  .msn-chip.active{background:var(--navy);border-color:var(--navy);color:#fff}
+  .msn-badge{
+    min-width:15px;height:15px;border-radius:8px;
+    background:var(--red);color:#fff;font-size:9px;font-weight:700;
+    display:inline-flex;align-items:center;justify-content:center;padding:0 3px;
+  }
+  .msn-chip.active .msn-badge{background:rgba(255,255,255,.3)}
+  .tasks-main-inner{padding:12px}
 }
 .toast{
   background:var(--text);color:var(--bg);
@@ -824,6 +851,18 @@ body:has(.ritual-overlay:not(.hidden)) .fab { display:none!important }
       <button class="nav-item" onclick="taskNav('completed',this)"><i class="ti ti-circle-check"></i>Completed<span class="nav-badge green hidden" id="nb-done"></span></button>
     </div>
     <div class="tasks-main">
+      <div class="mobile-section-nav" id="mobile-section-nav">
+        <button class="msn-chip active" onclick="taskNav('today',this)">Must Today<span class="msn-badge hidden" id="msn-nb-today"></span></button>
+        <button class="msn-chip" onclick="taskNav('next5',this)">Next 5 Days<span class="msn-badge hidden" id="msn-nb-week"></span></button>
+        <button class="msn-chip" onclick="taskNav('waiton',this)">Waiting On</button>
+        <button class="msn-chip" onclick="taskNav('inbox',this)">Inbox<span class="msn-badge hidden" id="msn-nb-inbox"></span></button>
+        <button class="msn-chip" onclick="taskNav('battlefront',this)">Battlefront<span class="msn-badge hidden" id="msn-nb-bf"></span></button>
+        <button class="msn-chip" onclick="taskNav('active',this)">Active</button>
+        <button class="msn-chip" onclick="taskNav('pipeline',this)">Pipeline</button>
+        <button class="msn-chip" onclick="taskNav('delegation',this)">Delegated</button>
+        <button class="msn-chip" onclick="taskNav('completed',this)">Completed</button>
+      </div>
+      <div class="tasks-main-inner">
       <div style="padding:10px 0 4px">
         <div class="who-filter" id="who-filter-bar">
           <button class="who-chip on" onclick="setWhoFilter('all',this)">All</button>
@@ -843,6 +882,7 @@ body:has(.ritual-overlay:not(.hidden)) .fab { display:none!important }
         </div>
       </div>
       <div class="task-list" id="task-list-main"></div>
+      </div><!-- /tasks-main-inner -->
     </div>
   </div>
 </div>
@@ -1428,6 +1468,15 @@ function updateBadges() {
   const nbInbox = document.getElementById('nb-inbox');
   const inbox = openTasks.filter(t=>!t.due);
   if(nbInbox) { if(inbox.length){ nbInbox.textContent=inbox.length; nbInbox.classList.remove('hidden'); } else nbInbox.classList.add('hidden'); }
+  // Mobile chip badges
+  const msnBf    = document.getElementById('msn-nb-bf');
+  const msnToday = document.getElementById('msn-nb-today');
+  const msnWeek  = document.getElementById('msn-nb-week');
+  const msnInbox = document.getElementById('msn-nb-inbox');
+  if(msnBf)    { if(bf.length)    { msnBf.textContent=bf.length;    msnBf.classList.remove('hidden'); }    else msnBf.classList.add('hidden'); }
+  if(msnToday) { if(tod.length)   { msnToday.textContent=tod.length; msnToday.classList.remove('hidden'); } else msnToday.classList.add('hidden'); }
+  if(msnWeek)  { if(wk.length)    { msnWeek.textContent=wk.length;  msnWeek.classList.remove('hidden'); }  else msnWeek.classList.add('hidden'); }
+  if(msnInbox) { if(inbox.length) { msnInbox.textContent=inbox.length; msnInbox.classList.remove('hidden'); } else msnInbox.classList.add('hidden'); }
 }
 
 // ══════════════════════════════
@@ -1620,13 +1669,16 @@ function toggleTaskExpand(cardEl) {
 // ══════════════════════════════
 function taskNav(section, btn) {
   _taskSection = section;
+  // Sync sidebar
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
-  if(btn) btn.classList.add('active');
-  else {
-    document.querySelectorAll('.nav-item').forEach(n=>{
-      if(n.getAttribute('onclick')&&n.getAttribute('onclick').includes("'"+section+"'")) n.classList.add('active');
-    });
-  }
+  document.querySelectorAll('.nav-item').forEach(n=>{
+    if(n.getAttribute('onclick')&&n.getAttribute('onclick').includes("'"+section+"'")) n.classList.add('active');
+  });
+  // Sync mobile section chips
+  document.querySelectorAll('.msn-chip').forEach(c=>c.classList.remove('active'));
+  document.querySelectorAll('.msn-chip').forEach(c=>{
+    if(c.getAttribute('onclick')&&c.getAttribute('onclick').includes("'"+section+"'")) c.classList.add('active');
+  });
   // Make sure tasks page is active
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
@@ -1979,7 +2031,7 @@ function captureTask() {
 //   DELEGATION MESSAGE
 // ══════════════════════════════
 function showDelegationMsg(id) {
-  const t = S.tasks.find(x=>x.id===id); if(!t) return;
+  const t = S.tasks.find(x=>String(x.id)===String(id)); if(!t) return;
   const cfg = S.settings;
   const now = new Date();
   const dueStr = t.due ? fmt(t.due) : 'no specific deadline';
