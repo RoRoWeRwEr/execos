@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#2451A0"/>
+      <stop offset="100%" stop-color="#0E2344"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <!-- Lightning bolt: wide, bold, centered -->
+  <polygon points="
+    297,80
+    220,280
+    272,280
+    215,432
+    340,232
+    284,232
+    360,80
+  " fill="#FFFFFF" opacity="0.97"/>
+</svg>

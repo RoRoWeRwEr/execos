@@ -1,0 +1,31 @@
+{
+  "name": "Executive OS",
+  "short_name": "ExecOS",
+  "description": "Executive productivity dashboard",
+  "start_url": "/execos/",
+  "scope": "/execos/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "theme_color": "#1B3D6F",
+  "background_color": "#0E2344",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
