@@ -1570,7 +1570,7 @@ function renderTaskCard(t, compact) {
     notesHtml = `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-xs);padding:6px 10px;margin-bottom:8px;font-size:12px;color:var(--text2);white-space:pre-wrap">${esc(t.notes)}</div>`;
   }
 
-  return `<div class="task-card ${borderClass}" id="tc-${sid}" onclick="toggleTaskExpand('${sid}')">
+  return `<div class="task-card ${borderClass}" id="tc-${sid}" onclick="toggleTaskExpand(this)">
     <div class="task-check ${isDone(t)?'done':''}" onclick="event.stopPropagation();toggleDone('${sid}')">
       ${isDone(t)?'<i class="ti ti-check" style="font-size:9px;color:#fff"></i>':''}
     </div>
@@ -1595,7 +1595,7 @@ function renderTaskCard(t, compact) {
       ${notesHtml}
       <div style="display:flex;gap:6px;margin-bottom:8px;align-items:flex-start">
         <textarea id="note-input-${sid}" class="ta" placeholder="Add a note..." rows="2" style="flex:1;font-size:12px" onclick="event.stopPropagation()"></textarea>
-        <button class="btn btn-sm btn-primary" style="margin-top:2px;flex-shrink:0" onclick="event.stopPropagation();addTaskNote('${sid}')"><i class="ti ti-plus"></i> Note</button>
+        <button class="btn btn-sm btn-primary" style="margin-top:2px;flex-shrink:0" onclick="event.stopPropagation();addTaskNote('${sid}',this)"><i class="ti ti-plus"></i> Note</button>
       </div>
       ${t.privateNote?`<div class="private-note-wrap"><div class="private-note-label"><i class="ti ti-lock"></i> Private note</div><div style="font-size:12px;color:var(--text);white-space:pre-wrap">${esc(t.privateNote)}</div></div>`:''}
       <div class="task-actions">
@@ -1608,13 +1608,11 @@ function renderTaskCard(t, compact) {
   </div>`;
 }
 
-function toggleTaskExpand(id) {
-  const sid = String(id);
-  const card = document.getElementById('tc-'+sid);
-  if(!card) return;
-  const isExp = card.classList.contains('expanded');
+function toggleTaskExpand(cardEl) {
+  if(!cardEl) return;
+  const isExp = cardEl.classList.contains('expanded');
   document.querySelectorAll('.task-card.expanded').forEach(c=>c.classList.remove('expanded'));
-  if(!isExp) card.classList.add('expanded');
+  if(!isExp) cardEl.classList.add('expanded');
 }
 
 // ══════════════════════════════
@@ -1844,8 +1842,9 @@ function saveTask() {
   toast(editId?'Task updated':'Task captured','success');
 }
 
-function addTaskNote(sid) {
-  const inp = document.getElementById('note-input-'+sid);
+function addTaskNote(sid, btn) {
+  const detail = btn ? btn.closest('.task-detail') : null;
+  const inp = detail ? detail.querySelector('textarea') : document.getElementById('note-input-'+sid);
   if(!inp) return;
   const text = inp.value.trim();
   if(!text) return;
@@ -1857,10 +1856,8 @@ function addTaskNote(sid) {
              now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
   t.notesLog.push({ts, text});
   save();
-  // Re-render just this card's notes section without full page re-render
-  const card = document.getElementById('tc-'+sid);
+  const card = btn ? btn.closest('.task-card') : document.getElementById('tc-'+sid);
   if(card) {
-    // Replace just the notes area
     const newCard = renderTaskCard(t, false);
     const tmp = document.createElement('div');
     tmp.innerHTML = newCard;
