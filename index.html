@@ -2001,7 +2001,7 @@ let _confirmCb = null;
 function showConfirm(msg, cb) {
   _confirmCb = cb;
   document.getElementById('confirm-msg').textContent = msg;
-  document.getElementById('confirm-ok-btn').onclick = ()=>{ closeConfirm(); if(_confirmCb) _confirmCb(); };
+  document.getElementById('confirm-ok-btn').onclick = ()=>{ const fn=_confirmCb; closeConfirm(); if(fn) fn(); };
   document.getElementById('confirm-modal').classList.remove('hidden');
 }
 function closeConfirm() {
